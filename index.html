@@ -45,6 +45,7 @@ main{padding:16px 14px}
 .btn.sm{padding:9px 12px;font-size:13px}
 .btn.outline{background:var(--papel);border:1px solid var(--line);color:var(--ink)}
 .btn.outline.warn{color:var(--paid)}
+.btn.share{width:100%;margin:2px 0 4px}
 
 /* Cartões da tela inicial */
 .card{display:block;width:100%;text-align:left;background:var(--papel);border:1px solid var(--line);border-radius:var(--radius);
@@ -210,6 +211,7 @@ function renderEvent(){
      <div class="stat p"><b>${c.p}</b><span><i class="dot p"></i>Pagas</span></div>
    </div>
    <div class="chips tabs" style="margin-top:14px">${rangeTabs}</div>
+   <button class="btn primary share" data-act="share">📤 Enviar senhas para escolha (${lo}–${lo+99})</button>
    <div class="grid">${cells}</div>
    <div class="manage"><h3>Gerenciar dia</h3>
     <div class="row">
@@ -327,6 +329,75 @@ function importData(){
   i.click()
 }
 
+/* ---------- Imagem da faixa para compartilhar ---------- */
+function rr(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()}
+function fitText(g,t,max){t=String(t);if(g.measureText(t).width<=max)return t;while(t.length>1&&g.measureText(t+'…').width>max)t=t.slice(0,-1);return t+'…'}
+
+function rangeCanvas(ev,day,lo){
+  const W=1080,H=1350,c=document.createElement('canvas');c.width=W;c.height=H;
+  const g=c.getContext('2d'),F='system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';
+  let r=0,p=0;
+  for(let n=lo;n<lo+100;n++){const s=ev.tickets[n]&&ev.tickets[n].s;if(s==='r')r++;else if(s==='p')p++}
+  const livres=100-r-p;
+
+  // Fundo e cabeçalho
+  g.fillStyle='#f5efe4';g.fillRect(0,0,W,H);
+  const gr=g.createLinearGradient(0,0,W,190);gr.addColorStop(0,'#5b3519');gr.addColorStop(1,'#3f230f');
+  g.fillStyle=gr;g.fillRect(0,0,W,190);
+  g.textAlign='center';g.textBaseline='middle';
+  g.fillStyle='#fff';g.font=`800 50px ${F}`;g.fillText(fitText(g,ev.name,W-80),W/2,72);
+  g.fillStyle='#f6d58a';g.font=`600 32px ${F}`;
+  g.fillText(fitText(g,`Dia ${day.n} · ${wd(day.date)}, ${fmtDate(day.date)} · Senhas ${lo}–${lo+99}`,W-80),W/2,135);
+
+  // Legenda
+  const items=[[`Disponíveis: ${livres}`,'#fff','#cbbfae'],[`Reservadas: ${r}`,'#2f6fd6','#2f6fd6'],[`Pagas: ${p}`,'#d0402f','#d0402f']];
+  g.font=`700 30px ${F}`;g.textAlign='left';
+  const sq=34,g1=12,g2=48;
+  let x=(W-(items.reduce((s,i)=>s+sq+g1+g.measureText(i[0]).width,0)+g2*(items.length-1)))/2;
+  const ly=245;
+  items.forEach(([t,f,b])=>{rr(g,x,ly-sq/2,sq,sq,8);g.fillStyle=f;g.fill();g.strokeStyle=b;g.lineWidth=2;g.stroke();
+    x+=sq+g1;g.fillStyle='#2a1d14';g.fillText(t,x,ly+1);x+=g.measureText(t).width+g2});
+
+  // Grade 10x10
+  const L=40,T=300,G=10,cw=(W-2*L-9*G)/10,ch=84;
+  g.textAlign='center';
+  for(let i=0;i<100;i++){
+    const n=lo+i,s=ev.tickets[n]&&ev.tickets[n].s,cx=L+(i%10)*(cw+G),cy=T+Math.floor(i/10)*(ch+G);
+    rr(g,cx,cy,cw,ch,14);
+    g.fillStyle=s==='r'?'#2f6fd6':s==='p'?'#d0402f':'#fffdf9';g.fill();
+    if(!s){g.strokeStyle='#d9ccb8';g.lineWidth=2;g.stroke()}
+    g.fillStyle=s?'#fff':'#2a1d14';g.font=`800 ${n>=1000?30:36}px ${F}`;
+    g.fillText(String(n),cx+cw/2,cy+ch/2+1);
+  }
+
+  // Rodapé
+  g.fillStyle='#7a6a5c';g.font=`600 28px ${F}`;
+  g.fillText(livres?'Escolha uma senha em branco e me envie o número':'Todas as senhas desta faixa já foram escolhidas',W/2,1282);
+  const now=new Date();g.font=`500 22px ${F}`;
+  g.fillText(`Atualizado em ${fmtDate(ymd(now))} às ${pad(now.getHours())}:${pad(now.getMinutes())}`,W/2,1322);
+  return c;
+}
+
+// Conversão síncrona para não perder o "toque" do usuário (exigência do iPhone para compartilhar)
+function canvasToFile(c,name){
+  const d=atob(c.toDataURL('image/png').split(',')[1]);const u=new Uint8Array(d.length);
+  for(let i=0;i<d.length;i++)u[i]=d.charCodeAt(i);
+  return new File([u],name,{type:'image/png'})}
+
+async function shareRange(){
+  const ev=curEv(),day=curDay(ev),lo=base(day)+view.range*100+1;
+  const slug=ev.name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\w]+/g,'-').replace(/^-|-$/g,'').toLowerCase()||'vaquejada';
+  const file=canvasToFile(rangeCanvas(ev,day,lo),`senhas-${slug}-dia${day.n}-${lo}-${lo+99}.png`);
+  if(navigator.canShare&&navigator.canShare({files:[file]})){
+    try{await navigator.share({files:[file]});return}
+    catch(e){if(e.name==='AbortError')return}
+  }
+  // Reserva: baixa a imagem
+  const a=document.createElement('a');a.href=URL.createObjectURL(file);a.download=file.name;
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  toast('Imagem salva. Agora é só enviar pelo WhatsApp');
+}
+
 $app.addEventListener('click',e=>{
   const el=e.target.closest('[data-act]');if(!el)return;const a=el.dataset.act;
   switch(a){
@@ -341,6 +412,7 @@ $app.addEventListener('click',e=>{
     case'sel-range':view.range=+el.dataset.i;render();break;
     case'add-range':addRange();break;
     case'del-range':delRange();break;
+    case'share':shareRange();break;
     case'cell':editTicket(+el.dataset.n);break;
     case'export':exportData();break;
     case'import':importData();break;
