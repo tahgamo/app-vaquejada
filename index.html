@@ -351,7 +351,7 @@ function rangeCanvas(ev,day,lo){
   g.fillText(fitText(g,`Dia ${day.n} · ${wd(day.date)}, ${fmtDate(day.date)} · Senhas ${lo}–${lo+99}`,W-80),W/2,135);
 
   // Legenda (apenas 2 itens)
-  const items=[[`Disponíveis: ${livres}`,'#fffdf9','#cbbfae'],[`Indisponíveis: ${ind}`,'#dcd6cd','#c9c1b5']];
+  const items=[[`Disponíveis: ${livres}`,'#fffdf9','#cbbfae'],[`Indisponíveis: ${ind}`,'#a39b90','#a39b90']];
   g.font=`700 30px ${F}`;g.textAlign='left';
   const sq=34,g1=12,g2=56;
   let x=(W-(items.reduce((s,i)=>s+sq+g1+g.measureText(i[0]).width,0)+g2*(items.length-1)))/2;
@@ -368,8 +368,8 @@ function rangeCanvas(ev,day,lo){
     rr(g,cx,cy,cw,ch,14);
     if(off){
       // "Apagada": fundo cinza claro e número esmaecido
-      g.fillStyle='#dcd6cd';g.fill();
-      g.fillStyle='#b3aba0';
+      g.fillStyle='#a39b90';g.fill();   // fundo mais escuro
+      g.fillStyle='#d4cec5';            // número claro, esmaecido
     }else{
       g.fillStyle='#fffdf9';g.fill();
       g.strokeStyle='#d9ccb8';g.lineWidth=2;g.stroke();
