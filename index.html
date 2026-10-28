@@ -336,9 +336,10 @@ function fitText(g,t,max){t=String(t);if(g.measureText(t).width<=max)return t;wh
 function rangeCanvas(ev,day,lo){
   const W=1080,H=1350,c=document.createElement('canvas');c.width=W;c.height=H;
   const g=c.getContext('2d'),F='system-ui,-apple-system,"Segoe UI",Roboto,sans-serif';
-  let r=0,p=0;
-  for(let n=lo;n<lo+100;n++){const s=ev.tickets[n]&&ev.tickets[n].s;if(s==='r')r++;else if(s==='p')p++}
-  const livres=100-r-p;
+  // Na imagem compartilhada, reservadas e pagas viram "indisponíveis" (sem expor a situação interna)
+  let ind=0;
+  for(let n=lo;n<lo+100;n++){const s=ev.tickets[n]&&ev.tickets[n].s;if(s==='r'||s==='p')ind++}
+  const livres=100-ind;
 
   // Fundo e cabeçalho
   g.fillStyle='#f5efe4';g.fillRect(0,0,W,H);
@@ -349,10 +350,10 @@ function rangeCanvas(ev,day,lo){
   g.fillStyle='#f6d58a';g.font=`600 32px ${F}`;
   g.fillText(fitText(g,`Dia ${day.n} · ${wd(day.date)}, ${fmtDate(day.date)} · Senhas ${lo}–${lo+99}`,W-80),W/2,135);
 
-  // Legenda
-  const items=[[`Disponíveis: ${livres}`,'#fff','#cbbfae'],[`Reservadas: ${r}`,'#2f6fd6','#2f6fd6'],[`Pagas: ${p}`,'#d0402f','#d0402f']];
+  // Legenda (apenas 2 itens)
+  const items=[[`Disponíveis: ${livres}`,'#fffdf9','#cbbfae'],[`Indisponíveis: ${ind}`,'#dcd6cd','#c9c1b5']];
   g.font=`700 30px ${F}`;g.textAlign='left';
-  const sq=34,g1=12,g2=48;
+  const sq=34,g1=12,g2=56;
   let x=(W-(items.reduce((s,i)=>s+sq+g1+g.measureText(i[0]).width,0)+g2*(items.length-1)))/2;
   const ly=245;
   items.forEach(([t,f,b])=>{rr(g,x,ly-sq/2,sq,sq,8);g.fillStyle=f;g.fill();g.strokeStyle=b;g.lineWidth=2;g.stroke();
@@ -362,11 +363,19 @@ function rangeCanvas(ev,day,lo){
   const L=40,T=300,G=10,cw=(W-2*L-9*G)/10,ch=84;
   g.textAlign='center';
   for(let i=0;i<100;i++){
-    const n=lo+i,s=ev.tickets[n]&&ev.tickets[n].s,cx=L+(i%10)*(cw+G),cy=T+Math.floor(i/10)*(ch+G);
+    const n=lo+i,s=ev.tickets[n]&&ev.tickets[n].s,off=s==='r'||s==='p',
+      cx=L+(i%10)*(cw+G),cy=T+Math.floor(i/10)*(ch+G);
     rr(g,cx,cy,cw,ch,14);
-    g.fillStyle=s==='r'?'#2f6fd6':s==='p'?'#d0402f':'#fffdf9';g.fill();
-    if(!s){g.strokeStyle='#d9ccb8';g.lineWidth=2;g.stroke()}
-    g.fillStyle=s?'#fff':'#2a1d14';g.font=`800 ${n>=1000?30:36}px ${F}`;
+    if(off){
+      // "Apagada": fundo cinza claro e número esmaecido
+      g.fillStyle='#dcd6cd';g.fill();
+      g.fillStyle='#b3aba0';
+    }else{
+      g.fillStyle='#fffdf9';g.fill();
+      g.strokeStyle='#d9ccb8';g.lineWidth=2;g.stroke();
+      g.fillStyle='#2a1d14';
+    }
+    g.font=`800 ${n>=1000?30:36}px ${F}`;
     g.fillText(String(n),cx+cw/2,cy+ch/2+1);
   }
 
