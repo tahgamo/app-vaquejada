@@ -1,4 +1,4 @@
-const CACHE = 'senhas-v7';
+const CACHE = 'senhas-v8';
 const ASSETS = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'];
 
 self.addEventListener('install', e => {
